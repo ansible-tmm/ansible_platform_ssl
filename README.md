@@ -2,9 +2,62 @@
 
 Automated SSL certificate issuance and management for Ansible Automation Platform using Let's Encrypt.
 
+## Table of Contents
+
+- [Ansible Automation Platform SSL Certificate Management](#ansible-automation-platform-ssl-certificate-management)
+  - [Table of Contents](#table-of-contents)
+  - [Overview](#overview)
+  - [How It Works](#how-it-works)
+  - [Roles](#roles)
+    - [1. `issue_cert` - RPM-Based AAP Installations](#1-issue_cert---rpm-based-aap-installations)
+    - [2. `issue_cert_containerized` - Containerized AAP Installations](#2-issue_cert_containerized---containerized-aap-installations)
+  - [Quick Start](#quick-start)
+    - [Prerequisites](#prerequisites)
+    - [For RPM-Based AAP](#for-rpm-based-aap)
+    - [For Containerized AAP](#for-containerized-aap)
+  - [Architecture](#architecture)
+    - [RPM-Based Deployment](#rpm-based-deployment)
+    - [Containerized Deployment](#containerized-deployment)
+  - [Important Notes](#important-notes)
+    - [Certificate Validation](#certificate-validation)
+    - [Chrome "Not Secure" Warning (Containerized Role)](#chrome-not-secure-warning-containerized-role)
+  - [Requirements](#requirements)
+  - [Support Matrix](#support-matrix)
+  - [Firewall Configuration](#firewall-configuration)
+    - [For RPM-Based Role](#for-rpm-based-role)
+    - [For Containerized Role](#for-containerized-role)
+  - [Certificate Renewal](#certificate-renewal)
+  - [Troubleshooting](#troubleshooting)
+    - [Certificate Validation Fails](#certificate-validation-fails)
+    - [SELinux Issues](#selinux-issues)
+  - [Examples](#examples)
+    - [RPM-Based Example](#rpm-based-example)
+    - [Containerized Example](#containerized-example)
+  - [Contributing](#contributing)
+  - [License](#license)
+  - [Contact](#contact)
+  - [Acknowledgments](#acknowledgments)
+
 ## Overview
 
 This repository provides Ansible roles to automatically obtain and configure valid SSL certificates from Let's Encrypt for Ansible Automation Platform (AAP) installations. Two different roles are provided to support different AAP deployment types.
+
+## How It Works
+
+**Important:** These roles **do not modify your AAP installation directly**. Instead, they:
+
+1. **Install nginx** as a separate web server on your system
+2. **Obtain Let's Encrypt certificates** using certbot
+3. **Configure nginx as a reverse proxy** with SSL termination
+4. **Forward requests** from nginx to your existing AAP installation
+
+This approach means:
+- ✅ **No AAP modification required** - Your AAP installation remains unchanged
+- ✅ **No installer re-run needed** - Works with existing AAP deployments
+- ✅ **Non-invasive** - nginx handles SSL, AAP continues working as-is
+- ✅ **Easy to remove** - Simply stop nginx to revert to original AAP access
+
+The nginx proxy sits in front of AAP, terminates SSL connections with valid certificates, and forwards traffic to AAP's existing ports.
 
 ## Roles
 
@@ -77,17 +130,26 @@ ansible-galaxy collection install ansible.posix
 
 ### RPM-Based Deployment
 ```
-Internet → Let's Encrypt Certificate → AAP (Port 443)
+Internet → Nginx Proxy (with Let's Encrypt cert) → AAP Components
 ```
 
-The role obtains a certificate and installs it directly into AAP's nginx configuration.
+**What happens:**
+1. Nginx installed on the system (separate from AAP)
+2. Let's Encrypt certificate obtained and configured in nginx
+3. Nginx acts as reverse proxy to existing AAP installation
+4. AAP components remain unchanged
 
 ### Containerized Deployment
 ```
 Internet → Nginx (Port 8444) with Let's Encrypt → AAP Gateway Proxy (Port 443)
 ```
 
-The role installs a separate nginx instance with SSL termination that proxies to the AAP gateway.
+**What happens:**
+1. Nginx installed on the system (separate from AAP containers)
+2. Let's Encrypt certificate obtained and configured in nginx
+3. Nginx listens on port 8444 with valid SSL certificate
+4. Nginx proxies requests to AAP gateway on port 443
+5. AAP containers remain unchanged
 
 ## Important Notes
 
