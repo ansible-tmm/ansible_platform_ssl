@@ -38,6 +38,15 @@
       changed_when: true
   when: configure_selinux | bool
 
+- name: Add custom nginx port to SELinux
+  ansible.builtin.command: semanage port -a -t http_port_t -p tcp {{ nginx_frontend_port }}
+  register: semanage_result
+  failed_when:
+    - semanage_result.rc != 0
+    - "'already defined' not in semanage_result.stderr"
+  changed_when: semanage_result.rc == 0
+  when: configure_selinux | bool
+
 - name: Create SSL directory for nginx
   ansible.builtin.file:
     path: "{{ _nginx_ssl_dir }}"
