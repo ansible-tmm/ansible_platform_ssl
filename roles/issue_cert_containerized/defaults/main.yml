@@ -8,35 +8,20 @@ letsencrypt_email: "ansible-network@redhat.com"
 
 # Port configuration
 # ==================
-# The port where nginx will listen for HTTPS connections (default: 443)
-nginx_frontend_port: 443
+# The port where nginx will listen for HTTPS connections with valid Let's Encrypt cert
+# Default: 8444 (since AAP is typically on 443)
+# Users will access AAP via https://your-hostname:8444
+nginx_frontend_port: 8444
 
-# The backend port where AAP gateway is running (default: 8501)
-# If modify_envoy is true, AAP will be moved to this port
-# If modify_envoy is false, this should match where AAP is currently running
-aap_backend_port: 8501
+# The backend port where AAP gateway is currently running
+# Default: 443 (standard AAP installation)
+# If you installed AAP with a custom port (e.g., during install set envoy_https_port=8501),
+# update this to match your AAP configuration
+aap_backend_port: 443
 
-# Envoy modification control
-# ===========================
-# Set to true to automatically reconfigure AAP's envoy to use aap_backend_port
-# Set to false if AAP is already running on aap_backend_port OR if you want nginx
-# to proxy to AAP on its current port (typically 443)
-#
-# USE CASE 1 (modify_envoy: true):
-#   - AAP currently on 443 → move to 8501
-#   - nginx takes over 443 → proxies to 8501
-#   - Best for brownfield environments with AAP already on 443
-#
-# USE CASE 2 (modify_envoy: false):
-#   - AAP stays on its current port (set aap_backend_port to match)
-#   - nginx uses nginx_frontend_port for SSL termination
-#   - Useful if you want to keep AAP port unchanged
-modify_envoy: false
-
-# Path to AAP gateway proxy configuration file
-# For system-wide install: /etc/ansible-automation-platform/gateway/proxy.yml
-# For user install: ~/aap/gateway/proxy.yml
-aap_proxy_config_path: "{{ ansible_env.HOME }}/aap/gateway/proxy.yml"
+# User running AAP (for user-based podman installations)
+# Typically 'ec2-user' for AWS, or 'aap' for some installations
+aap_user: "ec2-user"
 
 # Backup directory for original configs
 backup_dir: "{{ ansible_env.HOME }}/aap_backup_{{ ansible_date_time.epoch }}"

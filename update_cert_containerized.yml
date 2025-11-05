@@ -6,20 +6,19 @@
   gather_facts: true
 
   tasks:
-    - name: Issue certificate with envoy modification
+    - name: Issue Let's Encrypt certificate for AAP
       ansible.builtin.include_role:
         name: issue_cert_containerized
       vars:
         # Required: Your DNS name
         dns_name: "aap-nostromo.demoredhat.com"
 
-        # IMPORTANT: Set to true to move AAP from 443 to 8501
-        # This allows nginx to take over port 443
-        modify_envoy: true
-
         # Optional: Customize ports (defaults shown)
-        # nginx_frontend_port: 443      # Port where nginx will listen
-        # aap_backend_port: 8501        # Port where AAP will be moved to
+        # nginx_frontend_port: 8444     # Port where nginx will listen with valid cert
+        # aap_backend_port: 443         # Port where AAP is currently running
 
         # Optional: Customize email for Let's Encrypt
         # letsencrypt_email: "your-email@example.com"
+
+        # Note: Users will access AAP at https://aap-nostromo.demoredhat.com:8444
+        # with a valid Let's Encrypt SSL certificate

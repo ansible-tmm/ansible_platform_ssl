@@ -5,6 +5,23 @@
     state: stopped
   when: nginx_status.status.ActiveState is defined and nginx_status.status.ActiveState == "active"
 
+- name: Stop AAP gateway-proxy temporarily for certbot
+  ansible.builtin.systemd:
+    name: automation-gateway-proxy
+    state: stopped
+    scope: user
+  become: true
+  become_user: "{{ aap_user }}"
+  register: gateway_stopped
+  ignore_errors: true
+
+- name: Wait for port 443 to be released
+  ansible.builtin.wait_for:
+    port: 443
+    state: stopped
+    timeout: 30
+  when: gateway_stopped is success
+
 - name: Issue SSL certificate with certbot
   block:
     - name: Run certbot standalone
@@ -67,3 +84,19 @@
     owner: root
     group: root
     mode: '0644'
+
+- name: Restart AAP gateway-proxy after certbot
+  ansible.builtin.systemd:
+    name: automation-gateway-proxy
+    state: started
+    scope: user
+  become: true
+  become_user: "{{ aap_user }}"
+  when: gateway_stopped is success
+
+- name: Wait for AAP to be available again
+  ansible.builtin.wait_for:
+    port: "{{ aap_backend_port }}"
+    delay: 3
+    timeout: 60
+  when: gateway_stopped is success

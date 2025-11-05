@@ -15,6 +15,7 @@
   retries: 3
   delay: 5
   until: https_test is success
+  ignore_errors: true
 
 - name: Display success message
   ansible.builtin.debug:
@@ -23,11 +24,12 @@
       - "✅ SSL Certificate Successfully Configured!"
       - "✅ ========================================="
       - ""
-      - "🌐 URL: https://{{ dns_name }}:{{ nginx_frontend_port }}"
+      - "🌐 Access URL: https://{{ dns_name }}:{{ nginx_frontend_port }}"
       - "🔒 Certificate: Valid (Let's Encrypt)"
       - "🔧 Nginx Frontend: Port {{ nginx_frontend_port }}"
       - "🎯 AAP Backend: Port {{ aap_backend_port }}"
-      - "📋 Backup Location: {{ backup_dir if modify_envoy else 'No changes made to envoy' }}"
+      - ""
+      - "Access your AAP instance at: https://{{ dns_name }}:{{ nginx_frontend_port }}"
       - ""
       - "✅ ========================================="
   when: https_test is success

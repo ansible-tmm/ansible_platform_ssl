@@ -16,15 +16,10 @@
       - "DNS Name: {{ dns_name }}"
       - "Nginx Frontend Port: {{ nginx_frontend_port }}"
       - "AAP Backend Port: {{ aap_backend_port }}"
-      - "Modify Envoy: {{ modify_envoy }}"
+      - ""
+      - "Nginx will terminate SSL on port {{ nginx_frontend_port }}"
+      - "and proxy requests to AAP on port {{ aap_backend_port }}"
       - "========================================"
-
-- name: Include detection tasks
-  ansible.builtin.include_tasks: 10_detect_aap.yml
-
-- name: Include envoy modification tasks
-  ansible.builtin.include_tasks: 20_modify_envoy.yml
-  when: modify_envoy | bool
 
 - name: Include nginx installation tasks
   ansible.builtin.include_tasks: 30_install_nginx.yml
