@@ -5310,6 +5310,476 @@ Perfect! ✅ **Now it handles the port conflict properly.** Here's the flow:
 
 ## **What Happens:**
 1. Certbot needs port 443 free for HTTPS-01 challenge
+2. We temporarily stop the gateway-proxy (envoy)
+3. Certbot validates and gets certificate
+4. We immediately restart gateway-proxy
+5. AAP is back online before nginx even starts
+
+**Ready to test now!** The port conflict is handled. 🚀
+
+```bash
+ansible-playbook update_cert_containerized.yml
+```
+
+---
+
+_**User (2025-11-05 15:58Z)**_
+
+[ec2-user@aap-nostromo ansible_platform_ssl]$ ansible-playbook update_cert_containerized.yml
+
+[WARNING]: provided hosts list is empty, only localhost is available. Note that the implicit localhost does not match 'all'
+
+
+
+PLAY [Issue SSL certificate for containerized AAP] ********************************************************************************************************************************
+
+
+
+TASK [Gathering Facts] ************************************************************************************************************************************************************
+
+ok: [localhost]
+
+
+
+TASK [Issue Let's Encrypt certificate for AAP] ************************************************************************************************************************************
+
+
+
+TASK [issue_cert_containerized : Validate required variables] *********************************************************************************************************************
+
+ok: [localhost] => {
+
+    "changed": false,
+
+    "msg": "All required variables are defined."
+
+}
+
+
+
+TASK [issue_cert_containerized : Display configuration summary] *******************************************************************************************************************
+
+ok: [localhost] => {
+
+    "msg": [
+
+        "===== SSL Certificate Configuration =====",
+
+        "DNS Name: aap-nostromo.demoredhat.com",
+
+        "Nginx Frontend Port: 8444",
+
+        "AAP Backend Port: 443",
+
+        "",
+
+        "Nginx will terminate SSL on port 8444",
+
+        "and proxy requests to AAP on port 443",
+
+        "========================================"
+
+    ]
+
+}
+
+
+
+TASK [issue_cert_containerized : Include nginx installation tasks] ****************************************************************************************************************
+
+ERROR! couldn't resolve module/action 'redhat.rhel_system_roles.seboolean'. This often indicates a misspelling, missing collection, or incorrect module path.
+
+
+
+The error appears to be in '/home/ec2-user/ansible_platform_ssl/roles/issue_cert_containerized/tasks/30_install_nginx.yml': line 10, column 3, but may
+
+be elsewhere in the file depending on the exact syntax problem.
+
+
+
+The offending line appears to be:
+
+
+
+
+
+- name: Configure SELinux boolean for nginx
+
+  ^ here
+
+---
+
+_**Agent (model claude-4.5-sonnet-thinking, mode Agent)**_
+
+<think><details><summary>Thought Process</summary>
+The error is that the `redhat.rhel_system_roles.seboolean` module is not available. This is from a collection that might not be installed. Let me use the standard `seboolean` module instead, which should be available by default.</details></think>
+
+---
+
+The SELinux module from rhel_system_roles collection isn't available. Let me use the standard Ansible seboolean module instead:
+
+---
+
+<tool-use data-tool-type="write" data-tool-name="search_replace">
+
+<details><summary>Tool use: **code_edit** • Edit file: /Users/sean/Documents/GitHub/IPvSean/ansible_platform_ssl/roles/issue_cert_containerized/tasks/30_install_nginx.yml</summary>
+
+**Chunk 1**
+Lines added: 2, lines removed: 1
+
+```diff
+@@ -9,9 +9,10 @@
+  
+  - name: Configure SELinux boolean for nginx
+-   redhat.rhel_system_roles.seboolean:
++   ansible.posix.seboolean:
+      name: httpd_can_network_connect
+      state: true
+      persistent: true
+    when: configure_selinux | bool
++   ignore_errors: true
+  
+  - name: Create SSL directory for nginx
+```
+
+</details>
+
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+If ansible.posix.seboolean also isn't available, we could fall back to using the command module with setsebool directly. Let me add an alternative approach.</details></think>
+
+---
+
+If that still doesn't work, let me add a fallback using the command module:
+
+---
+
+<tool-use data-tool-type="write" data-tool-name="search_replace">
+
+<details><summary>Tool use: **code_edit** • Edit file: /Users/sean/Documents/GitHub/IPvSean/ansible_platform_ssl/roles/issue_cert_containerized/tasks/30_install_nginx.yml</summary>
+
+**Chunk 1**
+Lines added: 10, lines removed: 5
+
+```diff
+@@ -9,10 +9,15 @@
+  
+  - name: Configure SELinux boolean for nginx
+-   ansible.posix.seboolean:
+-     name: httpd_can_network_connect
+-     state: true
+-     persistent: true
++   block:
++     - name: Set SELinux boolean using ansible.posix
++       ansible.posix.seboolean:
++         name: httpd_can_network_connect
++         state: true
++         persistent: true
++   rescue:
++     - name: Set SELinux boolean using command (fallback)
++       ansible.builtin.command: setsebool -P httpd_can_network_connect on
++       changed_when: true
+    when: configure_selinux | bool
+-   ignore_errors: true
+  
+  - name: Create SSL directory for nginx
+```
+
+</details>
+
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+Now I have a block/rescue that will try the ansible.posix.seboolean module first, and if that fails, it will fall back to using the command module with setsebool. This should handle both cases where the collection is available and where it's not.</details></think>
+
+---
+
+Perfect! Now it will:
+1. Try `ansible.posix.seboolean` first
+2. If that fails, fall back to `setsebool` command directly
+
+**Run it again:**
+```bash
+ansible-playbook update_cert_containerized.yml
+```
+
+This should get past the SELinux configuration step now! 🚀
+
+---
+
+_**User (2025-11-05 15:58Z)**_
+
+[ec2-user@aap-nostromo ansible_platform_ssl]$ ansible-playbook update_cert_containerized.yml
+
+
+
+[WARNING]: provided hosts list is empty, only localhost is available. Note that the implicit localhost does not match 'all'
+
+PLAY [Issue SSL certificate for containerized AAP] ********************************************************************************************************************************
+
+TASK [Gathering Facts] ************************************************************************************************************************************************************
+
+ok: [localhost]
+
+TASK [Issue Let's Encrypt certificate for AAP] ************************************************************************************************************************************
+
+TASK [issue_cert_containerized : Validate required variables] *********************************************************************************************************************
+
+ok: [localhost] => {
+
+    "changed": false,
+
+    "msg": "All required variables are defined."
+
+}
+
+TASK [issue_cert_containerized : Display configuration summary] *******************************************************************************************************************
+
+ok: [localhost] => {
+
+    "msg": [
+
+        "===== SSL Certificate Configuration =====",
+
+        "DNS Name: aap-nostromo.demoredhat.com",
+
+        "Nginx Frontend Port: 8444",
+
+        "AAP Backend Port: 443",
+
+        "",
+
+        "Nginx will terminate SSL on port 8444",
+
+        "and proxy requests to AAP on port 443",
+
+        "========================================"
+
+    ]
+
+}
+
+TASK [issue_cert_containerized : Include nginx installation tasks] ****************************************************************************************************************
+
+[WARNING]: Collection ansible.posix does not support Ansible version 2.14.17
+
+included: /home/ec2-user/ansible_platform_ssl/roles/issue_cert_containerized/tasks/30_install_nginx.yml for localhost
+
+TASK [issue_cert_containerized : Install nginx and certbot packages] **************************************************************************************************************
+
+fatal: [localhost]: FAILED! => {"changed": false, "failures": ["No package certbot available."], "msg": "Failed to install some of the specified packages", "rc": 1, "results": []}
+
+PLAY RECAP ************************************************************************************************************************************************************************
+
+localhost                  : ok=4    changed=0    unreachable=0    failed=1    skipped=0    rescued=0    ignored=0
+
+[ec2-user@aap-nostromo ansible_platform_ssl]$
+
+
+
+i think we need epel-release b/c this is running on RHEL :( can you fix that
+
+---
+
+_**Agent (model claude-4.5-sonnet-thinking, mode Agent)**_
+
+<think><details><summary>Thought Process</summary>
+The user is right - certbot is in EPEL repository, not in the standard RHEL repos. I need to install EPEL first before trying to install certbot.</details></think>
+
+---
+
+Absolutely! Certbot is in EPEL. Let me add that:
+
+---
+
+<tool-use data-tool-type="write" data-tool-name="search_replace">
+
+<details><summary>Tool use: **code_edit** • Edit file: /Users/sean/Documents/GitHub/IPvSean/ansible_platform_ssl/roles/issue_cert_containerized/tasks/30_install_nginx.yml</summary>
+
+**Chunk 1**
+Lines added: 7, lines removed: undefined
+
+```diff
+@@ -1,3 +1,10 @@
+  ---
++ - name: Install EPEL repository
++   ansible.builtin.dnf:
++     name: 
++       - epel-release
++     state: present
++     disable_gpg_check: true
++ 
+  - name: Install nginx and certbot packages
+    ansible.builtin.dnf:
+```
+
+</details>
+
+</tool-use>
+
+---
+
+<think><details><summary>Thought Process</summary>
+Good, I added EPEL installation before the nginx/certbot installation. This should fix the issue. Let me confirm the user should try again.</details></think>
+
+---
+
+Perfect! Now it will install EPEL first, then certbot will be available.
+
+**Try again:**
+```bash
+ansible-playbook update_cert_containerized.yml
+```
+
+This should get past the package installation now! 🚀
+
+---
+
+_**User (2025-11-05 15:58Z)**_
+
+[ec2-user@aap-nostromo ansible_platform_ssl]$ ansible-playbook update_cert_containerized.yml
+
+[WARNING]: provided hosts list is empty, only localhost is available. Note that the implicit localhost does not match 'all'
+
+
+
+PLAY [Issue SSL certificate for containerized AAP] ********************************************************************************************************************************
+
+
+
+TASK [Gathering Facts] ************************************************************************************************************************************************************
+
+ok: [localhost]
+
+
+
+TASK [Issue Let's Encrypt certificate for AAP] ************************************************************************************************************************************
+
+
+
+TASK [issue_cert_containerized : Validate required variables] *********************************************************************************************************************
+
+ok: [localhost] => {
+
+    "changed": false,
+
+    "msg": "All required variables are defined."
+
+}
+
+
+
+TASK [issue_cert_containerized : Display configuration summary] *******************************************************************************************************************
+
+ok: [localhost] => {
+
+    "msg": [
+
+        "===== SSL Certificate Configuration =====",
+
+        "DNS Name: aap-nostromo.demoredhat.com",
+
+        "Nginx Frontend Port: 8444",
+
+        "AAP Backend Port: 443",
+
+        "",
+
+        "Nginx will terminate SSL on port 8444",
+
+        "and proxy requests to AAP on port 443",
+
+        "========================================"
+
+    ]
+
+}
+
+
+
+TASK [issue_cert_containerized : Include nginx installation tasks] ****************************************************************************************************************
+
+[WARNING]: Collection ansible.posix does not support Ansible version 2.14.17
+
+included: /home/ec2-user/ansible_platform_ssl/roles/issue_cert_containerized/tasks/30_install_nginx.yml for localhost
+
+
+
+TASK [issue_cert_containerized : Install EPEL repository] *************************************************************************************************************************
+
+fatal: [localhost]: FAILED! => {"changed": false, "failures": ["No package epel-release available."], "msg": "Failed to install some of the specified packages", "rc": 1, "results": []}
+
+
+
+PLAY RECAP ************************************************************************************************************************************************************************
+
+localhost                  : ok=4    changed=0    unreachable=0    failed=1    skipped=0    rescued=0    ignored=0
+
+
+
+[ec2-user@aap-nostromo ansible_platform_ssl]$ xd
+
+---
+
+_**Agent (model claude-4.5-sonnet-thinking, mode Agent)**_
+
+<think><details><summary>Thought Process</summary>
+The user is on RHEL and epel-release package isn't available. On RHEL (not CentOS), you need to install EPEL differently - typically by downloading and installing the RPM directly or using `dnf install https://...` with the EPEL RPM URL.
+
+Let me check what RHEL version they're on and install EPEL properly.</details></think>
+
+---
+
+RHEL doesn't have `epel-release` in the base repos. We need to install it from the EPEL RPM directly. Let me fix that:
+
+---
+
+<tool-use data-tool-type="write" data-tool-name="search_replace">
+
+<details><summary>Tool use: **code_edit** • Edit file: /Users/sean/Documents/GitHub/IPvSean/ansible_platform_ssl/roles/issue_cert_containerized/tasks/30_install_nginx.yml</summary>
+
+**Chunk 1**
+Lines added: 14, lines removed: 3
+
+```diff
+@@ -1,9 +1,20 @@
+  ---
+- - name: Install EPEL repository
++ - name: Determine RHEL version
++   ansible.builtin.set_fact:
++     rhel_version: &quot;{{ ansible_distribution_major_version }}&quot;
++ 
++ - name: Install EPEL repository for RHEL 9
++   ansible.builtin.dnf:
++     name: &quot;https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm&quot;
++     state: present
++     disable_gpg_check: true
++   when: rhel_version == &quot;9&quot;
++ 
++ - name: Install EPEL repository for RHEL 8
+    ansible.builtin.dnf:
+-     name:
+-       - epel-release
++     name: &quot;https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm&quot;
+      state: present
+      disable_gpg_check: true
++   when: rhel_version == &quot;8&quot;
+  
+  - name: Install nginx and certbot packages
+```
+
+</details>
+
+</tool-use>
+
+---
+
+
 
 ---
 

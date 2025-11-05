@@ -22,6 +22,30 @@ This role installs nginx with a valid Let's Encrypt SSL certificate and configur
 - DNS record pointing to your server
 - Port 80 accessible for Let's Encrypt validation
 - Custom port available for nginx (default: 8444)
+- Ansible Collections:
+  - `ansible.posix` (for SELinux configuration)
+
+### Installing Required Collections
+
+Before running this role, install the required Ansible collection:
+
+```bash
+ansible-galaxy collection install ansible.posix
+```
+
+Or add it to your `requirements.yml`:
+
+```yaml
+---
+collections:
+  - name: ansible.posix
+    version: ">=1.0.0"
+```
+
+Then install with:
+```bash
+ansible-galaxy collection install -r requirements.yml
+```
 
 ## Role Variables
 
