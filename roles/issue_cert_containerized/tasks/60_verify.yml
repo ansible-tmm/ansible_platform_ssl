@@ -1,0 +1,40 @@
+---
+- name: Wait for nginx to be available
+  ansible.builtin.wait_for:
+    port: "{{ nginx_frontend_port }}"
+    delay: 2
+    timeout: 30
+
+- name: Test HTTPS connection to nginx
+  ansible.builtin.uri:
+    url: "https://{{ dns_name }}:{{ nginx_frontend_port }}/api/gateway/v1/ping/"
+    method: GET
+    status_code: 200
+    validate_certs: true
+  register: https_test
+  retries: 3
+  delay: 5
+  until: https_test is success
+
+- name: Display success message
+  ansible.builtin.debug:
+    msg:
+      - "✅ ========================================="
+      - "✅ SSL Certificate Successfully Configured!"
+      - "✅ ========================================="
+      - ""
+      - "🌐 URL: https://{{ dns_name }}:{{ nginx_frontend_port }}"
+      - "🔒 Certificate: Valid (Let's Encrypt)"
+      - "🔧 Nginx Frontend: Port {{ nginx_frontend_port }}"
+      - "🎯 AAP Backend: Port {{ aap_backend_port }}"
+      - "📋 Backup Location: {{ backup_dir if modify_envoy else 'No changes made to envoy' }}"
+      - ""
+      - "✅ ========================================="
+  when: https_test is success
+
+- name: Display warning if test failed
+  ansible.builtin.debug:
+    msg:
+      - "⚠️  WARNING: HTTPS test failed!"
+      - "Please verify configuration manually at https://{{ dns_name }}:{{ nginx_frontend_port }}"
+  when: https_test is failed

@@ -1,0 +1,31 @@
+---
+- name: Template nginx configuration
+  ansible.builtin.template:
+    src: nginx.conf.j2
+    dest: /etc/nginx/nginx.conf
+    owner: root
+    group: root
+    mode: '0644'
+    validate: 'nginx -t -c %s'
+  register: nginx_config
+
+- name: Enable nginx service
+  ansible.builtin.systemd:
+    name: nginx
+    enabled: true
+
+- name: Start nginx service
+  ansible.builtin.systemd:
+    name: nginx
+    state: started
+  when: nginx_status.status.ActiveState is not defined or nginx_status.status.ActiveState != "active"
+
+- name: Restart nginx service
+  ansible.builtin.systemd:
+    name: nginx
+    state: restarted
+  when: nginx_config.changed and nginx_status.status.ActiveState is defined and nginx_status.status.ActiveState == "active"
+
+- name: Display nginx status
+  ansible.builtin.debug:
+    msg: "✅ Nginx is configured and running on port {{ nginx_frontend_port }}"

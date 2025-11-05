@@ -1,0 +1,33 @@
+---
+- name: Install nginx and certbot packages
+  ansible.builtin.dnf:
+    name:
+      - nginx
+      - certbot
+    state: present
+    disable_gpg_check: true
+
+- name: Configure SELinux boolean for nginx
+  redhat.rhel_system_roles.seboolean:
+    name: httpd_can_network_connect
+    state: true
+    persistent: true
+  when: configure_selinux | bool
+
+- name: Create SSL directory for nginx
+  ansible.builtin.file:
+    path: "{{ _nginx_ssl_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Check if nginx is currently running
+  ansible.builtin.systemd:
+    name: nginx
+  register: nginx_status
+  ignore_errors: true
+
+- name: Display nginx status
+  ansible.builtin.debug:
+    msg: "Nginx service status: {{ nginx_status.status.ActiveState | default('not installed') }}"

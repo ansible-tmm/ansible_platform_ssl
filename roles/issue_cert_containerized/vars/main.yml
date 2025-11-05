@@ -1,0 +1,5 @@
+---
+# Internal variables (do not override)
+_nginx_ssl_dir: "/etc/nginx/ssl"
+_letsencrypt_live_dir: "/etc/letsencrypt/live"
+_proxy_config_backup: "{{ backup_dir }}/proxy.yml.backup"

@@ -1,0 +1,41 @@
+---
+- name: Check if AAP gateway proxy config exists
+  ansible.builtin.stat:
+    path: "{{ aap_proxy_config_path }}"
+  register: proxy_config_stat
+
+- name: Fail if AAP gateway proxy config not found
+  ansible.builtin.fail:
+    msg: "AAP gateway proxy config not found at {{ aap_proxy_config_path }}. Is this a containerized AAP 2.x+ installation?"
+  when: not proxy_config_stat.stat.exists
+
+- name: Read current AAP proxy configuration
+  ansible.builtin.slurp:
+    src: "{{ aap_proxy_config_path }}"
+  register: proxy_config_content
+
+- name: Parse proxy configuration
+  ansible.builtin.set_fact:
+    current_proxy_config: "{{ proxy_config_content.content | b64decode | from_yaml }}"
+
+- name: Extract current AAP port
+  ansible.builtin.set_fact:
+    current_aap_port: "{{ current_proxy_config.gateway_http_ports[0].number | default(443) }}"
+
+- name: Display current AAP configuration
+  ansible.builtin.debug:
+    msg:
+      - "Current AAP Port: {{ current_aap_port }}"
+      - "Target Backend Port: {{ aap_backend_port }}"
+      - "Port Change Required: {{ current_aap_port | int != aap_backend_port | int }}"
+
+- name: Check if automation-gateway-proxy service exists
+  ansible.builtin.systemd:
+    name: automation-gateway-proxy
+  register: gateway_proxy_service
+  ignore_errors: true
+
+- name: Warn if service not found
+  ansible.builtin.debug:
+    msg: "WARNING: automation-gateway-proxy service not found. Skipping service management."
+  when: gateway_proxy_service.failed

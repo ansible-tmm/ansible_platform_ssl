@@ -1,0 +1,47 @@
+---
+# DNS name for the SSL certificate (required)
+# Example: ansible.example.com
+dns_name: ""
+
+# Email for Let's Encrypt registration
+letsencrypt_email: "ansible-network@redhat.com"
+
+# Port configuration
+# ==================
+# The port where nginx will listen for HTTPS connections (default: 443)
+nginx_frontend_port: 443
+
+# The backend port where AAP gateway is running (default: 8501)
+# If modify_envoy is true, AAP will be moved to this port
+# If modify_envoy is false, this should match where AAP is currently running
+aap_backend_port: 8501
+
+# Envoy modification control
+# ===========================
+# Set to true to automatically reconfigure AAP's envoy to use aap_backend_port
+# Set to false if AAP is already running on aap_backend_port OR if you want nginx
+# to proxy to AAP on its current port (typically 443)
+#
+# USE CASE 1 (modify_envoy: true):
+#   - AAP currently on 443 → move to 8501
+#   - nginx takes over 443 → proxies to 8501
+#   - Best for brownfield environments with AAP already on 443
+#
+# USE CASE 2 (modify_envoy: false):
+#   - AAP stays on its current port (set aap_backend_port to match)
+#   - nginx uses nginx_frontend_port for SSL termination
+#   - Useful if you want to keep AAP port unchanged
+modify_envoy: false
+
+# Path to AAP gateway proxy configuration file
+aap_proxy_config_path: "/etc/ansible-automation-platform/gateway/proxy.yml"
+
+# Backup directory for original configs
+backup_dir: "/root/aap_backup_{{ ansible_date_time.epoch }}"
+
+# SELinux configuration
+configure_selinux: true
+
+# Certbot retry configuration
+certbot_retries: 5
+certbot_retry_delay: 10

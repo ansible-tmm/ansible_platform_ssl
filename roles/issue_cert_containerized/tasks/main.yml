@@ -1,0 +1,39 @@
+---
+- name: Validate required variables
+  ansible.builtin.assert:
+    that:
+      - dns_name is defined
+      - dns_name | length > 0
+      - nginx_frontend_port is defined
+      - aap_backend_port is defined
+    fail_msg: "Required variables missing. Please set 'dns_name', 'nginx_frontend_port', and 'aap_backend_port'."
+    success_msg: "All required variables are defined."
+
+- name: Display configuration summary
+  ansible.builtin.debug:
+    msg:
+      - "===== SSL Certificate Configuration ====="
+      - "DNS Name: {{ dns_name }}"
+      - "Nginx Frontend Port: {{ nginx_frontend_port }}"
+      - "AAP Backend Port: {{ aap_backend_port }}"
+      - "Modify Envoy: {{ modify_envoy }}"
+      - "========================================"
+
+- name: Include detection tasks
+  ansible.builtin.include_tasks: 10_detect_aap.yml
+
+- name: Include envoy modification tasks
+  ansible.builtin.include_tasks: 20_modify_envoy.yml
+  when: modify_envoy | bool
+
+- name: Include nginx installation tasks
+  ansible.builtin.include_tasks: 30_install_nginx.yml
+
+- name: Include certificate issuance tasks
+  ansible.builtin.include_tasks: 40_issue_cert.yml
+
+- name: Include nginx configuration tasks
+  ansible.builtin.include_tasks: 50_configure_nginx.yml
+
+- name: Include verification tasks
+  ansible.builtin.include_tasks: 60_verify.yml

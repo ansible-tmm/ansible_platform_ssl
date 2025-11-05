@@ -1,0 +1,69 @@
+---
+- name: Stop nginx for certbot standalone mode
+  ansible.builtin.systemd:
+    name: nginx
+    state: stopped
+  when: nginx_status.status.ActiveState is defined and nginx_status.status.ActiveState == "active"
+
+- name: Issue SSL certificate with certbot
+  block:
+    - name: Run certbot standalone
+      ansible.builtin.command: >
+        certbot certonly --standalone
+        -d {{ dns_name }}
+        --email {{ letsencrypt_email }}
+        --noninteractive
+        --agree-tos
+      register: certbot_result
+      until: certbot_result is not failed
+      retries: "{{ certbot_retries }}"
+      delay: "{{ certbot_retry_delay }}"
+      changed_when: "'Successfully received certificate' in certbot_result.stdout or 'Certificate not yet due for renewal' in certbot_result.stdout"
+
+    - name: Display certbot output
+      ansible.builtin.debug:
+        var: certbot_result.stdout_lines
+
+  rescue:
+    - name: Display certbot error
+      ansible.builtin.debug:
+        msg:
+          - "❌ Failed to obtain SSL certificate from Let's Encrypt"
+          - "Please check https://letsencrypt.status.io/ to verify service status"
+          - "Error: {{ certbot_result.stderr | default('Unknown error') }}"
+
+    - name: Fail the playbook
+      ansible.builtin.fail:
+        msg: "Unable to obtain SSL certificate. Cannot continue."
+
+- name: Find certificate directory in letsencrypt
+  ansible.builtin.find:
+    paths: "{{ _letsencrypt_live_dir }}"
+    file_type: directory
+  register: cert_dirs
+
+- name: Get the most recent certificate directory
+  ansible.builtin.set_fact:
+    certificate_path: "{{ (cert_dirs.files | sort(attribute='mtime', reverse=true) | first).path }}"
+
+- name: Display certificate path
+  ansible.builtin.debug:
+    msg: "Certificate located at: {{ certificate_path }}"
+
+- name: Copy SSL private key to nginx directory
+  ansible.builtin.copy:
+    remote_src: true
+    src: "{{ certificate_path }}/privkey.pem"
+    dest: "{{ _nginx_ssl_dir }}/aap.key"
+    owner: root
+    group: root
+    mode: '0600'
+
+- name: Copy SSL certificate to nginx directory
+  ansible.builtin.copy:
+    remote_src: true
+    src: "{{ certificate_path }}/fullchain.pem"
+    dest: "{{ _nginx_ssl_dir }}/aap.crt"
+    owner: root
+    group: root
+    mode: '0644'

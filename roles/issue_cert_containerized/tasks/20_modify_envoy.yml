@@ -1,0 +1,71 @@
+---
+- name: Create backup directory
+  ansible.builtin.file:
+    path: "{{ backup_dir }}"
+    state: directory
+    mode: '0700'
+
+- name: Backup original proxy configuration
+  ansible.builtin.copy:
+    src: "{{ aap_proxy_config_path }}"
+    dest: "{{ _proxy_config_backup }}"
+    remote_src: true
+    mode: '0600'
+
+- name: Display backup location
+  ansible.builtin.debug:
+    msg: "Original configuration backed up to: {{ _proxy_config_backup }}"
+
+- name: Modify AAP gateway port in proxy config
+  ansible.builtin.set_fact:
+    modified_proxy_config: "{{ current_proxy_config | combine({'gateway_http_ports': [modified_http_port]}, recursive=True) }}"
+  vars:
+    modified_http_port:
+      name: "{{ current_proxy_config.gateway_http_ports[0].name }}"
+      number: "{{ aap_backend_port | int }}"
+      use_https: "{{ current_proxy_config.gateway_http_ports[0].use_https }}"
+      is_api_port: "{{ current_proxy_config.gateway_http_ports[0].is_api_port }}"
+
+- name: Write modified proxy configuration
+  ansible.builtin.copy:
+    content: "{{ modified_proxy_config | to_nice_yaml }}"
+    dest: "{{ aap_proxy_config_path }}"
+    owner: root
+    group: root
+    mode: '0640'
+    backup: true
+
+- name: Restart automation-gateway-proxy service
+  ansible.builtin.systemd:
+    name: automation-gateway-proxy
+    state: restarted
+  when: not gateway_proxy_service.failed
+
+- name: Wait for AAP to be available on new port
+  ansible.builtin.wait_for:
+    port: "{{ aap_backend_port }}"
+    delay: 5
+    timeout: 60
+    msg: "AAP did not come up on port {{ aap_backend_port }} after 60 seconds"
+
+- name: Verify AAP is responding on new port
+  ansible.builtin.uri:
+    url: "https://localhost:{{ aap_backend_port }}/api/gateway/v1/ping/"
+    method: GET
+    validate_certs: false
+    status_code: 200
+  register: aap_health_check
+  retries: 3
+  delay: 5
+  until: aap_health_check is success
+  ignore_errors: true
+
+- name: Display port change success
+  ansible.builtin.debug:
+    msg: "✅ Successfully moved AAP from port {{ current_aap_port }} to port {{ aap_backend_port }}"
+  when: aap_health_check is success
+
+- name: Warn if health check failed
+  ansible.builtin.debug:
+    msg: "⚠️  WARNING: AAP health check failed on new port {{ aap_backend_port }}. Please verify manually."
+  when: aap_health_check is failed
