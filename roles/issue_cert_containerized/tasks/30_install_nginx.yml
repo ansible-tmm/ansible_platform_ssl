@@ -1,4 +1,11 @@
 ---
+- name: Install EPEL repository
+  ansible.builtin.dnf:
+    name:
+      - epel-release
+    state: present
+    disable_gpg_check: true
+
 - name: Install nginx and certbot packages
   ansible.builtin.dnf:
     name:
