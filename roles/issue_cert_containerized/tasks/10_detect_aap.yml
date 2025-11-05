@@ -1,12 +1,60 @@
 ---
-- name: Check if AAP gateway proxy config exists
+- name: Check for AAP in ec2-user home directory
+  ansible.builtin.stat:
+    path: "/home/ec2-user/aap/gateway/proxy.yml"
+  register: ec2_user_aap_config
+
+- name: Check for AAP in current user home directory
+  ansible.builtin.stat:
+    path: "/home/{{ ansible_user_id }}/aap/gateway/proxy.yml"
+  register: user_aap_config
+  when: ansible_user_id != 'ec2-user'
+
+- name: Check for system-wide AAP installation
+  ansible.builtin.stat:
+    path: "/etc/ansible-automation-platform/gateway/proxy.yml"
+  register: system_aap_config
+
+- name: Set proxy config path to ec2-user location
+  ansible.builtin.set_fact:
+    aap_proxy_config_path: "/home/ec2-user/aap/gateway/proxy.yml"
+  when: ec2_user_aap_config.stat.exists
+
+- name: Set proxy config path to current user location
+  ansible.builtin.set_fact:
+    aap_proxy_config_path: "/home/{{ ansible_user_id }}/aap/gateway/proxy.yml"
+  when:
+    - not ec2_user_aap_config.stat.exists
+    - user_aap_config is defined
+    - user_aap_config.stat.exists
+
+- name: Set proxy config path to system location
+  ansible.builtin.set_fact:
+    aap_proxy_config_path: "/etc/ansible-automation-platform/gateway/proxy.yml"
+  when:
+    - not ec2_user_aap_config.stat.exists
+    - (user_aap_config is not defined or not user_aap_config.stat.exists)
+    - system_aap_config.stat.exists
+
+- name: Check if AAP gateway proxy config exists at final path
   ansible.builtin.stat:
     path: "{{ aap_proxy_config_path }}"
   register: proxy_config_stat
 
+- name: Display detected configuration location
+  ansible.builtin.debug:
+    msg: "Found AAP configuration at: {{ aap_proxy_config_path }}"
+  when: proxy_config_stat.stat.exists
+
 - name: Fail if AAP gateway proxy config not found
   ansible.builtin.fail:
-    msg: "AAP gateway proxy config not found at {{ aap_proxy_config_path }}. Is this a containerized AAP 2.x+ installation?"
+    msg: |
+      AAP gateway proxy config not found!
+      Checked locations:
+        - /home/ec2-user/aap/gateway/proxy.yml
+        - /home/{{ ansible_user }}/aap/gateway/proxy.yml
+        - /etc/ansible-automation-platform/gateway/proxy.yml
+      Is this a containerized AAP 2.x+ installation?
   when: not proxy_config_stat.stat.exists
 
 - name: Read current AAP proxy configuration

@@ -34,10 +34,12 @@ aap_backend_port: 8501
 modify_envoy: false
 
 # Path to AAP gateway proxy configuration file
-aap_proxy_config_path: "/etc/ansible-automation-platform/gateway/proxy.yml"
+# For system-wide install: /etc/ansible-automation-platform/gateway/proxy.yml
+# For user install: ~/aap/gateway/proxy.yml
+aap_proxy_config_path: "{{ ansible_env.HOME }}/aap/gateway/proxy.yml"
 
 # Backup directory for original configs
-backup_dir: "/root/aap_backup_{{ ansible_date_time.epoch }}"
+backup_dir: "{{ ansible_env.HOME }}/aap_backup_{{ ansible_date_time.epoch }}"
 
 # SELinux configuration
 configure_selinux: true

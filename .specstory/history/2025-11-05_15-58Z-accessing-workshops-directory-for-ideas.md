@@ -3010,3 +3010,149 @@ The role is complete with all the logic from the workshops, adapted for your bro
 
 ---
 
+_**User (2025-11-05 15:58Z)**_
+
+[ec2-user@aap-nostromo ansible_platform_ssl]$ ansible-playbook update_cert_containerized.yml
+
+
+
+[WARNING]: provided hosts list is empty, only localhost is available. Note that the implicit localhost does not match 'all'
+
+PLAY [Issue SSL certificate for containerized AAP] ********************************************************************************************************************************
+
+TASK [Gathering Facts] ************************************************************************************************************************************************************
+
+ok: [localhost]
+
+TASK [Issue certificate with envoy modification] **********************************************************************************************************************************
+
+TASK [issue_cert_containerized : Validate required variables] *********************************************************************************************************************
+
+ok: [localhost] => {
+
+    "changed": false,
+
+    "msg": "All required variables are defined."
+
+}
+
+TASK [issue_cert_containerized : Display configuration summary] *******************************************************************************************************************
+
+ok: [localhost] => {
+
+    "msg": [
+
+        "===== SSL Certificate Configuration =====",
+
+        "DNS Name: aap-nostromo.demoredhat.com",
+
+        "Nginx Frontend Port: 443",
+
+        "AAP Backend Port: 8501",
+
+        "Modify Envoy: True",
+
+        "========================================"
+
+    ]
+
+}
+
+TASK [issue_cert_containerized : Include detection tasks] *************************************************************************************************************************
+
+included: /home/ec2-user/ansible_platform_ssl/roles/issue_cert_containerized/tasks/10_detect_aap.yml for localhost
+
+TASK [issue_cert_containerized : Check if AAP gateway proxy config exists] ********************************************************************************************************
+
+ok: [localhost]
+
+TASK [issue_cert_containerized : Fail if AAP gateway proxy config not found] ******************************************************************************************************
+
+fatal: [localhost]: FAILED! => {"changed": false, "msg": "AAP gateway proxy config not found at /etc/ansible-automation-platform/gateway/proxy.yml. Is this a containerized AAP 2.x+ installation?"}
+
+PLAY RECAP ************************************************************************************************************************************************************************
+
+localhost                  : ok=5    changed=0    unreachable=0    failed=1    skipped=0    rescued=0    ignored=0
+
+[ec2-user@aap-nostromo ansible_platform_ssl]$
+
+
+
+i think you got the wrong folder locations, it always seems to install to the user (in this case ec2-user) and then aap
+
+
+
+so it looks like this:
+
+
+
+[ec2-user@aap-nostromo ~]$ cd aap
+
+[ec2-user@aap-nostromo aap]$ ls
+
+containers  controller  eda  gateway  gatewayproxy  postgresql  receptor  redis  tls
+
+[ec2-user@aap-nostromo aap]$
+
+
+
+
+
+
+
+
+
+---
+
+_**Agent (model claude-4.5-sonnet-thinking, mode Agent)**_
+
+<think><details><summary>Thought Process</summary>
+Ah! The user is running AAP in containerized mode but it's not installed in `/etc/ansible-automation-platform/gateway/` - it's installed in the user's home directory at `~/aap/`. This is likely a containerized deployment using podman containers.
+
+Let me look at what's in the gateway directory:
+- ~/aap/gateway - this is where the gateway config would be
+
+I need to update the role to look for the proxy config in the correct location. The path should be something like:
+`/home/ec2-user/aap/gateway/proxy.yml` or maybe `~/aap/gatewayproxy/proxy.yml`
+
+Let me fix the default path in the role.</details></think>
+
+---
+
+Ah! 🎯 You're running AAP in **containerized mode with podman** in the user's home directory, not the system-wide installation. Let me check where the proxy config actually lives:
+
+---
+
+<tool-use data-tool-type="unknown" data-tool-name="search_replace">
+<details>
+<summary>Tool use: **search_replace**</summary>
+
+
+Parameters:
+
+```json
+{
+  &quot;relativeWorkspacePath&quot;: &quot;/Users/sean/Documents/GitHub/IPvSean/ansible_platform_ssl/roles/issue_cert_containerized/defaults/main.yml&quot;
+}
+```
+Additional data:
+
+```json
+{
+  &quot;codeblockId&quot;: &quot;843a1602-8a1f-4a58-9ea3-1d849ad7b5ff&quot;
+}
+```
+User decision: **accepted**
+
+Status: **loading**
+
+
+</details>
+</tool-use>
+
+---
+
+
+
+---
+
