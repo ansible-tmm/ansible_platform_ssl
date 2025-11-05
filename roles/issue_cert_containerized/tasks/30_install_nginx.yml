@@ -8,10 +8,16 @@
     disable_gpg_check: true
 
 - name: Configure SELinux boolean for nginx
-  redhat.rhel_system_roles.seboolean:
-    name: httpd_can_network_connect
-    state: true
-    persistent: true
+  block:
+    - name: Set SELinux boolean using ansible.posix
+      ansible.posix.seboolean:
+        name: httpd_can_network_connect
+        state: true
+        persistent: true
+  rescue:
+    - name: Set SELinux boolean using command (fallback)
+      ansible.builtin.command: setsebool -P httpd_can_network_connect on
+      changed_when: true
   when: configure_selinux | bool
 
 - name: Create SSL directory for nginx
