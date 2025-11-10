@@ -5,6 +5,19 @@
     delay: 2
     timeout: 30
 
+- name: Verify full certificate chain is being served
+  ansible.builtin.shell: >
+    echo | openssl s_client -connect localhost:{{ nginx_frontend_port }}
+    -servername {{ dns_name }} -showcerts 2>/dev/null
+    | grep -c 'BEGIN CERTIFICATE'
+  register: chain_count
+  changed_when: false
+  failed_when: false
+
+- name: Display certificate chain status
+  ansible.builtin.debug:
+    msg: "Certificate chain contains {{ chain_count.stdout }} certificate(s) (expected: 2 = leaf + intermediate)"
+
 - name: Test HTTPS connection to nginx
   ansible.builtin.uri:
     url: "https://{{ dns_name }}:{{ nginx_frontend_port }}/api/gateway/v1/ping/"

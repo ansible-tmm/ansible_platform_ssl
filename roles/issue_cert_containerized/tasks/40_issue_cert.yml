@@ -85,6 +85,11 @@
     group: root
     mode: '0644'
 
+- name: Restore SELinux context on SSL files
+  ansible.builtin.command: restorecon -Rv {{ _nginx_ssl_dir }}
+  when: configure_selinux | bool
+  changed_when: false
+
 - name: Restart AAP gateway-proxy after certbot
   ansible.builtin.systemd:
     name: automation-gateway-proxy

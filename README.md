@@ -162,17 +162,25 @@ Both roles use Let's Encrypt for certificate issuance, which requires:
 
 ### Chrome "Not Secure" Warning (Containerized Role)
 
-When using the containerized role with the default port 8444, Chrome may display a "Not Secure" warning even though the certificate is valid and the connection is encrypted. This is a Chrome security policy for non-standard HTTPS ports.
+When using the containerized role with the default port 8444, Chrome displays a "Not Secure" warning even though the certificate is valid and the connection is encrypted.
 
-**What this means:**
-- ✅ Your connection IS secure and encrypted
-- ✅ Certificate IS valid (verified by Let's Encrypt)
-- ⚠️ Chrome flags non-standard ports as "Not Secure"
+**Important:** This is **NOT a certificate problem**.
+
+![Chrome showing "Not Secure" but "Certificate is valid"](docs/chrome-not-secure-but-valid.png)
+
+**What's happening:**
+- ✅ Certificate IS valid (Chrome confirms this: "Certificate is valid" ✓)
+- ✅ Connection IS secure and fully encrypted
+- ✅ Full certificate chain is properly served
+- ⚠️ Chrome policy: Any HTTPS on non-standard ports (not 443) gets flagged
 - ✅ Firefox and other browsers show it as secure
 
-**Options:**
-1. **Accept the warning** - Connection is secure, just Chrome being cautious (Recommended for existing installations)
-2. **Use port 443** - Requires AAP reinstallation with custom ports
+**Why Chrome does this:**
+Chrome's security policy discourages users from trusting HTTPS sites on non-standard ports as a general precaution against phishing and man-in-the-middle attacks. Even with a perfectly valid Let's Encrypt certificate and full chain, Chrome will show "Not Secure" for any port except 443.
+
+**Your options:**
+1. **Accept the warning** - Connection is actually secure, just Chrome being extra cautious (Recommended for internal/existing installations)
+2. **Use port 443** - Requires AAP reinstallation with `envoy_https_port=8501` set during install, then run this role with `nginx_frontend_port: 443`
 
 See the [containerized role README](roles/issue_cert_containerized/README.md) for details on configuring standard ports.
 
