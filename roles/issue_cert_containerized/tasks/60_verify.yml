@@ -37,7 +37,7 @@
       - "✅ SSL Certificate Successfully Configured!"
       - "✅ ========================================="
       - ""
-      - "🌐 Access URL: https://{{ dns_name }}:{{ nginx_frontend_port }}"
+      - "🌐 AAP Access URL: https://{{ dns_name }}:{{ nginx_frontend_port }}"
       - "🔒 Certificate: Valid (Let's Encrypt)"
       - "🔧 Nginx Frontend: Port {{ nginx_frontend_port }}"
       - "🎯 AAP Backend: Port {{ aap_backend_port }}"
@@ -45,7 +45,9 @@
       - "Access your AAP instance at: https://{{ dns_name }}:{{ nginx_frontend_port }}"
       - ""
       - "✅ ========================================="
-  when: https_test is success
+  when:
+    - https_test is success
+    - not (mcp_proxy_enabled | default(false) | bool)
 
 - name: Display warning if test failed
   ansible.builtin.debug:
@@ -53,3 +55,57 @@
       - "⚠️  WARNING: HTTPS test failed!"
       - "Please verify configuration manually at https://{{ dns_name }}:{{ nginx_frontend_port }}"
   when: https_test is failed
+
+# MCP Proxy Verification (when enabled)
+- name: Wait for MCP nginx proxy to be available
+  ansible.builtin.wait_for:
+    port: "{{ mcp_frontend_port }}"
+    delay: 2
+    timeout: 30
+  when: mcp_proxy_enabled | default(false) | bool
+
+- name: Test HTTPS connection to MCP proxy
+  ansible.builtin.uri:
+    url: "https://{{ dns_name }}:{{ mcp_frontend_port }}/"
+    method: GET
+    status_code: 200
+    validate_certs: true
+  register: mcp_https_test
+  retries: 3
+  delay: 5
+  until: mcp_https_test is success
+  ignore_errors: true
+  when: mcp_proxy_enabled | default(false) | bool
+
+- name: Display success message with MCP
+  ansible.builtin.debug:
+    msg:
+      - "✅ ========================================="
+      - "✅ SSL Certificate Successfully Configured!"
+      - "✅ ========================================="
+      - ""
+      - "🌐 AAP Access URL: https://{{ dns_name }}:{{ nginx_frontend_port }}"
+      - "🔧 Nginx Frontend: Port {{ nginx_frontend_port }}"
+      - "🎯 AAP Backend: Port {{ aap_backend_port }}"
+      - ""
+      - "🤖 MCP Access URL: https://{{ dns_name }}:{{ mcp_frontend_port }}"
+      - "🔧 MCP Frontend: Port {{ mcp_frontend_port }}"
+      - "🎯 MCP Backend: Port {{ mcp_backend_port }}"
+      - ""
+      - "🔒 Certificate: Valid (Let's Encrypt)"
+      - ""
+      - "✅ ========================================="
+  when:
+    - https_test is success
+    - mcp_proxy_enabled | default(false) | bool
+    - mcp_https_test is success
+
+- name: Display warning if MCP test failed
+  ansible.builtin.debug:
+    msg:
+      - "⚠️  WARNING: MCP HTTPS test failed!"
+      - "Please verify configuration manually at https://{{ dns_name }}:{{ mcp_frontend_port }}"
+  when:
+    - mcp_proxy_enabled | default(false) | bool
+    - mcp_https_test is defined
+    - mcp_https_test is failed

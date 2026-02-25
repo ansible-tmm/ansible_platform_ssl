@@ -20,5 +20,12 @@
         # Optional: Customize email for Let's Encrypt
         # letsencrypt_email: "your-email@example.com"
 
-        # Note: Users will access AAP at https://aap-nostromo.demoredhat.com:8444
-        # with a valid Let's Encrypt SSL certificate
+        # Optional: Enable MCP Server proxy
+        # Set to true if you have an MCP server running and want it proxied with valid SSL
+        mcp_proxy_enabled: true
+        # mcp_frontend_port: 8449       # Port where nginx will listen for MCP
+        # mcp_backend_port: 8448        # Port where MCP server is running
+
+        # Access URLs after running:
+        # AAP: https://aap-nostromo.demoredhat.com:8444
+        # MCP: https://aap-nostromo.demoredhat.com:8449 (if mcp_proxy_enabled: true)

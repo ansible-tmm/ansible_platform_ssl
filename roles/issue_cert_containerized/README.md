@@ -65,6 +65,14 @@ ansible-galaxy collection install -r requirements.yml
 | `configure_selinux` | `true` | Configure SELinux for nginx proxy |
 | `aap_user` | `ec2-user` | User running AAP (for podman installations) |
 
+### MCP Server Proxy Variables (Optional)
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `mcp_proxy_enabled` | `false` | Enable nginx proxy for MCP server |
+| `mcp_frontend_port` | `8449` | Port where nginx listens for MCP HTTPS |
+| `mcp_backend_port` | `8448` | Port where MCP server is currently running |
+
 ## Usage
 
 ### Standard Deployment (AAP on Port 443)
@@ -81,6 +89,28 @@ This is the default and simplest configuration:
 ```
 
 **Result:** Users access AAP at `https://ansible.example.com:8444` with a valid Let's Encrypt certificate.
+
+### With MCP Server Proxy
+
+If you have an MCP server running alongside AAP and want it to also use the valid Let's Encrypt certificate:
+
+```yaml
+- hosts: localhost
+  become: true
+  roles:
+    - role: issue_cert_containerized
+      vars:
+        dns_name: "ansible.example.com"
+        mcp_proxy_enabled: true
+        # mcp_frontend_port: 8449  # Optional - defaults to 8449
+        # mcp_backend_port: 8448   # Optional - defaults to 8448
+```
+
+**Result:**
+- AAP: `https://ansible.example.com:8444`
+- MCP: `https://ansible.example.com:8449`
+
+Both endpoints use the same valid Let's Encrypt certificate.
 
 ### Custom Ports
 
@@ -108,6 +138,8 @@ If you installed AAP with custom ports, adjust the variables:
 
 ## Architecture
 
+### Standard AAP Proxy
+
 ```
 [Internet] → https://hostname:8444 (nginx with Let's Encrypt cert)
                  ↓
@@ -115,6 +147,16 @@ If you installed AAP with custom ports, adjust the variables:
                  ↓
             https://localhost:443 (AAP)
 ```
+
+### With MCP Server Proxy Enabled
+
+```
+[Internet] → https://hostname:8444 (AAP) ──→ [nginx] ──→ https://localhost:443 (AAP)
+                                               ↑
+[Internet] → https://hostname:8449 (MCP) ──→ [nginx] ──→ https://localhost:8448 (MCP)
+```
+
+Both endpoints share the same Let's Encrypt certificate for valid SSL.
 
 ## Advanced Configuration
 
@@ -152,13 +194,17 @@ ansible-playbook update_cert_containerized.yml
 Make sure your firewall allows:
 - Port 80 (for Let's Encrypt validation)
 - Port 8444 (or your custom `nginx_frontend_port`)
+- Port 8449 (if `mcp_proxy_enabled: true`, or your custom `mcp_frontend_port`)
 
 Example for firewalld:
 ```bash
 firewall-cmd --permanent --add-port=80/tcp
 firewall-cmd --permanent --add-port=8444/tcp
+firewall-cmd --permanent --add-port=8449/tcp  # If using MCP proxy
 firewall-cmd --reload
 ```
+
+For AWS Security Groups, ensure you add inbound rules for these ports.
 
 ## Troubleshooting
 

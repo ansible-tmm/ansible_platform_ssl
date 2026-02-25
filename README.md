@@ -151,6 +151,14 @@ Internet → Nginx (Port 8444) with Let's Encrypt → AAP Gateway Proxy (Port 44
 4. Nginx proxies requests to AAP gateway on port 443
 5. AAP containers remain unchanged
 
+### Containerized Deployment with MCP Server
+```
+Internet → Nginx (Port 8444) with Let's Encrypt → AAP Gateway Proxy (Port 443)
+         → Nginx (Port 8449) with Let's Encrypt → MCP Server (Port 8448)
+```
+
+When `mcp_proxy_enabled: true`, nginx also proxies MCP server traffic using the same Let's Encrypt certificate.
+
 ## Important Notes
 
 ### Certificate Validation
@@ -214,8 +222,11 @@ firewall-cmd --reload
 ```bash
 firewall-cmd --permanent --add-port=80/tcp
 firewall-cmd --permanent --add-port=8444/tcp
+firewall-cmd --permanent --add-port=8449/tcp  # If using MCP proxy
 firewall-cmd --reload
 ```
+
+For AWS Security Groups, add inbound rules for ports 80, 8444, and 8449 (if using MCP).
 
 ## Certificate Renewal
 
@@ -281,6 +292,30 @@ sudo ls -lZ /etc/nginx/ssl/
         # Optional: nginx_frontend_port: 8444
         # Optional: aap_backend_port: 443
 ```
+
+### Containerized Example with MCP Server
+```yaml
+---
+- name: Issue SSL certificate for containerized AAP with MCP
+  hosts: localhost
+  connection: local
+  become: true
+  gather_facts: true
+  tasks:
+    - name: Issue Let's Encrypt certificate for AAP and MCP
+      ansible.builtin.include_role:
+        name: issue_cert_containerized
+      vars:
+        dns_name: "ansible.example.com"
+        # Enable MCP Server proxy
+        mcp_proxy_enabled: true
+        # Optional: mcp_frontend_port: 8449
+        # Optional: mcp_backend_port: 8448
+```
+
+**Result:**
+- AAP: `https://ansible.example.com:8444`
+- MCP: `https://ansible.example.com:8449`
 
 ## Contributing
 

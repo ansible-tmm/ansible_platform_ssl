@@ -32,3 +32,16 @@ configure_selinux: true
 # Certbot retry configuration
 certbot_retries: 5
 certbot_retry_delay: 10
+
+# MCP Server Proxy Configuration (optional)
+# ==========================================
+# Set to true to enable an additional nginx proxy for MCP server
+# This allows MCP server to also use the Let's Encrypt certificate
+mcp_proxy_enabled: false
+
+# The frontend port where nginx will listen for MCP HTTPS connections
+# Users will access MCP at https://your-hostname:mcp_frontend_port
+mcp_frontend_port: 8449
+
+# The backend port where MCP server is currently running
+mcp_backend_port: 8448
