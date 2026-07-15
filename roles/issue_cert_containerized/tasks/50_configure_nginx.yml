@@ -24,7 +24,6 @@
   ansible.builtin.systemd:
     name: nginx
     state: restarted
-  when: nginx_config.changed and nginx_status.status.ActiveState is defined and nginx_status.status.ActiveState == "active"
 
 - name: Display nginx status
   ansible.builtin.debug:
